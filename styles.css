@@ -1,0 +1,11 @@
+.photo-calendar {
+  --calendar-border: var(--background-modifier-border);
+  --calendar-hover: var(--background-modifier-hover);
+}
+
+.modal-button-container {
+  display: flex;
+  justify-content: flex-end;
+  gap: 8px;
+  margin-top: 16px;
+}
