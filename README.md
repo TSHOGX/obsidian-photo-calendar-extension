@@ -1,6 +1,16 @@
 # Photo Calendar
 
+[English](#) | [中文](./README.zh.md)
+
 A calendar plugin for Obsidian that displays photos from your daily notes as calendar backgrounds.
+
+## Screenshots
+
+**Plugin View**
+![Plugin View](./screenshots/plugin-view.webp)
+
+**Full View with Daily Note**
+![Full View](./screenshots/full-view.webp)
 
 ## Features
 
