@@ -16,5 +16,8 @@ main.js
 *.swo
 *~
 
+# Claude
+.claude/
+
 # Obsidian
 data.json
