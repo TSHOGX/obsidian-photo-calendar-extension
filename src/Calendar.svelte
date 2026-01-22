@@ -1,6 +1,7 @@
 <script lang="ts">
   import { onMount, onDestroy, tick } from "svelte";
   import type PhotoCalendarPlugin from "./main";
+  import type { ISettings } from "./constants";
   import type { Moment } from "moment";
   import {
     Calendar as CalendarBase,
@@ -11,6 +12,7 @@
   import { createWordCountSource } from "./wordCountSource";
 
   export let plugin: PhotoCalendarPlugin;
+  export let settings: ISettings;
   export let onDateClick: (date: Moment, isNewNote: boolean) => void;
   export let onDateHover: (date: Moment, targetEl: HTMLElement) => void;
   export let onWeekClick: (date: Moment, isMetaPressed: boolean) => Promise<boolean>;
@@ -34,13 +36,13 @@
   $: monthNames = today?.localeData?.()?.monthsShort?.() ?? moment.monthsShort();
 
   function getToday() {
-    const { weekStart } = plugin.settings;
+    const { weekStart } = settings;
     configureGlobalMomentLocale("", weekStart);
     return moment();
   }
 
   function getSources() {
-    if (plugin.settings.showPhotos) {
+    if (settings.showPhotos) {
       return [createPhotoSource(plugin)];
     } else {
       return [createWordCountSource(plugin)];
@@ -110,7 +112,7 @@
     updatePhotoBackgrounds();
   }
 
-  $: if (plugin.settings.showPhotos !== undefined) {
+  $: if (settings?.showPhotos !== undefined) {
     updatePhotoBackgrounds();
   }
 
@@ -200,7 +202,7 @@
 
     containerEl.style.setProperty(
       "--photo-calendar-note-bg",
-      plugin.settings.noteBackgroundColor
+      settings.noteBackgroundColor
     );
 
     const dayElements = Array.from(
@@ -216,7 +218,7 @@
       el.style.textShadow = "";
     });
 
-    if (!plugin.settings.showPhotos) {
+    if (!settings.showPhotos) {
       return;
     }
 
@@ -243,7 +245,7 @@
 
         if (el) {
           el.style.backgroundImage = `url('${photo}')`;
-          el.style.backgroundSize = plugin.settings.photoFillMode;
+          el.style.backgroundSize = settings.photoFillMode;
           el.style.backgroundPosition = "center";
           el.style.backgroundRepeat = "no-repeat";
           if (!el.classList.contains("adjacent-month")) {
@@ -258,8 +260,8 @@
 
 <div
   class="photo-calendar"
-  class:photo-calendar--photo-mode={plugin.settings.showPhotos}
-  class:photo-calendar--weeknums={plugin.settings.showWeekNums}
+  class:photo-calendar--photo-mode={settings.showPhotos}
+  class:photo-calendar--weeknums={settings.showWeekNums}
   bind:this={containerEl}
 >
 <CalendarBase
@@ -274,7 +276,7 @@
   bind:displayedMonth
   localeData={today.localeData()}
   selectedId={null}
-  showWeekNums={plugin.settings.showWeekNums}
+  showWeekNums={settings.showWeekNums}
 />
 {#if showMonthPicker}
   <div

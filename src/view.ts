@@ -40,6 +40,7 @@ export class CalendarView extends ItemView {
       target: this.contentEl,
       props: {
         plugin: this.plugin,
+        settings: { ...this.plugin.settings },
         onDateClick: this.onDateClick.bind(this),
         onDateHover: this.onDateHover.bind(this),
         onWeekClick: this.onWeekClick.bind(this),
@@ -73,10 +74,17 @@ export class CalendarView extends ItemView {
     this.refreshTimeout = setTimeout(() => {
       this.refreshTrigger++;
       if (this.calendarComponent) {
-        this.calendarComponent.$set({ refreshTrigger: this.refreshTrigger });
+        this.calendarComponent.$set({
+          refreshTrigger: this.refreshTrigger,
+          settings: { ...this.plugin.settings },
+        });
       }
       this.refreshTimeout = null;
     }, 300);
+  }
+
+  onSettingsChanged(): void {
+    this.refresh();
   }
 
   async onClose(): Promise<void> {

@@ -65,6 +65,17 @@ export default class PhotoCalendarPlugin extends Plugin {
   async saveSettings() {
     await this.saveData(this.settings);
     this.photoService?.updateSettings(this.settings);
+    this.refreshOpenViews();
+  }
+
+  private refreshOpenViews() {
+    const leaves = this.app.workspace.getLeavesOfType(VIEW_TYPE_CALENDAR);
+    leaves.forEach((leaf) => {
+      const view = leaf.view;
+      if (view instanceof CalendarView) {
+        view.onSettingsChanged();
+      }
+    });
   }
 
   onunload() {
