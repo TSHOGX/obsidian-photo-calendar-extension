@@ -30,6 +30,7 @@
   let isPickerListenersAttached = false;
   let containerClickHandler: ((event: MouseEvent) => void) | null = null;
   let monthNames: string[] = moment.monthsShort();
+  let photoUpdateToken = 0;
 
   $: today = getToday();
   $: sources = getSources();
@@ -196,29 +197,46 @@
   }
 
   async function updatePhotoBackgrounds() {
-    await new Promise(resolve => setTimeout(resolve, 100));
+    const updateToken = ++photoUpdateToken;
+    await tick();
+    await new Promise(requestAnimationFrame);
 
     if (!containerEl) return;
+    if (updateToken !== photoUpdateToken) return;
 
     containerEl.style.setProperty(
       "--photo-calendar-note-bg",
       settings.noteBackgroundColor
     );
 
-    const dayElements = Array.from(
+    let dayElements = Array.from(
       containerEl.querySelectorAll(".day")
     ) as HTMLElement[];
 
-    dayElements.forEach((el: HTMLElement) => {
-      el.style.backgroundImage = "";
-      el.style.backgroundSize = "";
-      el.style.backgroundPosition = "";
-      el.style.backgroundRepeat = "";
-      el.style.color = "";
-      el.style.textShadow = "";
-    });
+    if (dayElements.length === 0) {
+      await new Promise(requestAnimationFrame);
+      if (updateToken !== photoUpdateToken) return;
+      dayElements = Array.from(
+        containerEl.querySelectorAll(".day")
+      ) as HTMLElement[];
+    }
 
     if (!settings.showPhotos) {
+      dayElements.forEach((el: HTMLElement) => {
+        if (el.dataset.photoCalendarPhoto) {
+          el.style.backgroundImage = "";
+          el.style.backgroundSize = "";
+          el.style.backgroundPosition = "";
+          el.style.backgroundRepeat = "";
+          delete el.dataset.photoCalendarPhoto;
+          delete el.dataset.photoCalendarFill;
+        }
+        if (el.dataset.photoCalendarTextApplied) {
+          el.style.color = "";
+          el.style.textShadow = "";
+          delete el.dataset.photoCalendarTextApplied;
+        }
+      });
       return;
     }
 
@@ -237,21 +255,62 @@
     }
 
     const dailyNotes = getAllDailyNotes();
-    Object.values(dailyNotes).forEach(async (file) => {
-      const photo = await plugin.photoService.getPhotoForDate(file.path);
-      if (photo) {
+    const photoResults = await Promise.all(
+      Object.values(dailyNotes).map(async (file) => {
         const date = moment(file.basename, "YYYY-MM-DD");
+        if (!date.isValid()) return null;
         const el = dateToElement.get(date.format("YYYY-MM-DD"));
+        if (!el) return null;
+        const photo = await plugin.photoService.getPhotoForDate(file.path);
+        return { el, photo };
+      })
+    );
 
-        if (el) {
-          el.style.backgroundImage = `url('${photo}')`;
-          el.style.backgroundSize = settings.photoFillMode;
+    if (updateToken !== photoUpdateToken) return;
+
+    const desiredPhotos = new Map<HTMLElement, string>();
+    photoResults.forEach((result) => {
+      if (!result) return;
+      if (result.photo) {
+        desiredPhotos.set(result.el, result.photo);
+      }
+    });
+
+    dayElements.forEach((el: HTMLElement) => {
+      const desiredPhoto = desiredPhotos.get(el);
+      const existingPhoto = el.dataset.photoCalendarPhoto;
+      const existingFill = el.dataset.photoCalendarFill;
+      const fillMode = settings.photoFillMode;
+
+      if (desiredPhoto) {
+        if (existingPhoto !== desiredPhoto || existingFill !== fillMode) {
+          el.style.backgroundImage = `url('${desiredPhoto}')`;
+          el.style.backgroundSize = fillMode;
           el.style.backgroundPosition = "center";
           el.style.backgroundRepeat = "no-repeat";
-          if (!el.classList.contains("adjacent-month")) {
-            el.style.color = "white";
-            el.style.textShadow = "0 1px 2px rgba(0, 0, 0, 0.75), 0 2px 8px rgba(0, 0, 0, 0.45)";
-          }
+          el.dataset.photoCalendarPhoto = desiredPhoto;
+          el.dataset.photoCalendarFill = fillMode;
+        }
+        if (!el.classList.contains("adjacent-month")) {
+          el.style.color = "white";
+          el.style.textShadow = "0 1px 2px rgba(0, 0, 0, 0.75), 0 2px 8px rgba(0, 0, 0, 0.45)";
+          el.dataset.photoCalendarTextApplied = "1";
+        } else if (el.dataset.photoCalendarTextApplied) {
+          el.style.color = "";
+          el.style.textShadow = "";
+          delete el.dataset.photoCalendarTextApplied;
+        }
+      } else if (existingPhoto) {
+        el.style.backgroundImage = "";
+        el.style.backgroundSize = "";
+        el.style.backgroundPosition = "";
+        el.style.backgroundRepeat = "";
+        delete el.dataset.photoCalendarPhoto;
+        delete el.dataset.photoCalendarFill;
+        if (el.dataset.photoCalendarTextApplied) {
+          el.style.color = "";
+          el.style.textShadow = "";
+          delete el.dataset.photoCalendarTextApplied;
         }
       }
     });
