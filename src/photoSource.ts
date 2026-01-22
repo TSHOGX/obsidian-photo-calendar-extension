@@ -2,6 +2,7 @@ import type { Moment } from "moment";
 import type { ICalendarSource, IDayMetadata } from "obsidian-calendar-ui";
 import { getDailyNote, getAllDailyNotes } from "obsidian-daily-notes-interface";
 import { getWeeklyNote, getAllWeeklyNotes } from "./weeklyNotes";
+import { getDotsForNote } from "./wordCountSource";
 import type PhotoCalendarPlugin from "./main";
 
 export function createPhotoSource(plugin: PhotoCalendarPlugin): ICalendarSource {
@@ -37,7 +38,12 @@ export function createPhotoSource(plugin: PhotoCalendarPlugin): ICalendarSource 
         }
       }
 
-      return { classes, dots: [] };
+      let dots: Array<{ className: string; color: string; isFilled: boolean }> = [];
+      if (weeklyNote) {
+        dots = await getDotsForNote(weeklyNote, plugin);
+      }
+
+      return { classes, dots };
     },
   };
 }

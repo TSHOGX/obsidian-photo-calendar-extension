@@ -13,7 +13,10 @@ async function getWordCount(file: TFile, plugin: PhotoCalendarPlugin): Promise<n
   return words.length;
 }
 
-async function getDotsForNote(file: TFile | null, plugin: PhotoCalendarPlugin): Promise<Array<{ className: string; color: string; isFilled: boolean }>> {
+export async function getDotsForNote(
+  file: TFile | null,
+  plugin: PhotoCalendarPlugin
+): Promise<Array<{ className: string; color: string; isFilled: boolean }>> {
   if (!file) return [];
 
   const { wordsPerDot } = plugin.settings;
