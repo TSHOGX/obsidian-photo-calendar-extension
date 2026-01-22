@@ -1,5 +1,5 @@
 <script lang="ts">
-  import { onMount, onDestroy } from "svelte";
+  import { onMount, onDestroy, tick } from "svelte";
   import type PhotoCalendarPlugin from "./main";
   import type { Moment } from "moment";
   import {
@@ -20,9 +20,18 @@
   let today: Moment;
   let displayedMonth: Moment = moment().startOf("month");
   let containerEl: HTMLDivElement | null = null;
+  let showMonthPicker = false;
+  let pickerYear = displayedMonth.year();
+  let pickerTop = 0;
+  let pickerLeft = 0;
+  let monthPickerEl: HTMLDivElement | null = null;
+  let isPickerListenersAttached = false;
+  let containerClickHandler: ((event: MouseEvent) => void) | null = null;
+  let monthNames: string[] = moment.monthsShort();
 
   $: today = getToday();
   $: sources = getSources();
+  $: monthNames = today?.localeData?.()?.monthsShort?.() ?? moment.monthsShort();
 
   function getToday() {
     const { weekStart } = plugin.settings;
@@ -73,10 +82,28 @@
 
   onDestroy(() => {
     clearInterval(heartbeat);
+    detachPickerListeners();
+    if (containerEl && containerClickHandler) {
+      containerEl.removeEventListener("click", containerClickHandler, true);
+    }
+    window.removeEventListener("resize", updatePickerPosition);
   });
 
   onMount(() => {
     updatePhotoBackgrounds();
+    containerClickHandler = (event: MouseEvent) => {
+      const target = event.target as HTMLElement | null;
+      if (!target || !containerEl) return;
+      const titleEl = target.closest(".nav .title") as HTMLElement | null;
+      if (!titleEl || !containerEl.contains(titleEl)) return;
+      event.preventDefault();
+      event.stopPropagation();
+      // Prevent the calendar's default reset handler.
+      (event as any).stopImmediatePropagation?.();
+      openMonthPicker(titleEl);
+    };
+    containerEl?.addEventListener("click", containerClickHandler, true);
+    window.addEventListener("resize", updatePickerPosition);
   });
 
   $: if (displayedMonth) {
@@ -90,6 +117,80 @@
   $: if (refreshTrigger) {
     sources = getSources();
     updatePhotoBackgrounds();
+  }
+
+  $: if (showMonthPicker) {
+    pickerYear = displayedMonth.year();
+    updatePickerPosition();
+    attachPickerListeners();
+  } else {
+    detachPickerListeners();
+  }
+
+  async function openMonthPicker(anchorEl: HTMLElement) {
+    pickerYear = displayedMonth.year();
+    showMonthPicker = true;
+    await tick();
+    updatePickerPosition(anchorEl);
+  }
+
+  function closeMonthPicker() {
+    showMonthPicker = false;
+  }
+
+  function updatePickerPosition(anchorOverride?: HTMLElement) {
+    const anchorEl =
+      anchorOverride ||
+      (containerEl?.querySelector(".nav .title") as HTMLElement | null);
+    if (!containerEl || !anchorEl || !monthPickerEl) return;
+    const anchorRect = anchorEl.getBoundingClientRect();
+    const containerRect = containerEl.getBoundingClientRect();
+    pickerTop = anchorRect.bottom - containerRect.top + 6;
+    pickerLeft = anchorRect.left - containerRect.left;
+  }
+
+  function handleOutsideClick(event: MouseEvent) {
+    const target = event.target as Node | null;
+    if (!target) return;
+    if (monthPickerEl && monthPickerEl.contains(target)) return;
+    const titleEl = containerEl?.querySelector(".nav .title");
+    if (titleEl && titleEl.contains(target)) return;
+    closeMonthPicker();
+  }
+
+  function handlePickerKeydown(event: KeyboardEvent) {
+    if (event.key === "Escape") {
+      event.preventDefault();
+      closeMonthPicker();
+    }
+  }
+
+  function attachPickerListeners() {
+    if (isPickerListenersAttached) return;
+    isPickerListenersAttached = true;
+    document.addEventListener("mousedown", handleOutsideClick, true);
+    document.addEventListener("keydown", handlePickerKeydown, true);
+    window.addEventListener("scroll", updatePickerPosition, true);
+  }
+
+  function detachPickerListeners() {
+    if (!isPickerListenersAttached) return;
+    isPickerListenersAttached = false;
+    document.removeEventListener("mousedown", handleOutsideClick, true);
+    document.removeEventListener("keydown", handlePickerKeydown, true);
+    window.removeEventListener("scroll", updatePickerPosition, true);
+  }
+
+  function selectMonth(monthIndex: number) {
+    const safeYear = Number.isFinite(pickerYear)
+      ? pickerYear
+      : displayedMonth.year();
+    displayedMonth = displayedMonth
+      .clone()
+      .year(safeYear)
+      .month(monthIndex)
+      .startOf("month");
+    closeMonthPicker();
   }
 
   async function updatePhotoBackgrounds() {
@@ -163,9 +264,55 @@
   selectedId={null}
   showWeekNums={plugin.settings.showWeekNums}
 />
+{#if showMonthPicker}
+  <div
+    class="month-picker"
+    style={`top: ${pickerTop}px; left: ${pickerLeft}px;`}
+    bind:this={monthPickerEl}
+  >
+    <div class="month-picker__header">
+      <button
+        class="month-picker__year-btn"
+        aria-label="Previous year"
+        on:click={() => (pickerYear -= 1)}
+      >
+        ‹
+      </button>
+      <input
+        class="month-picker__year-input"
+        type="number"
+        min="1900"
+        max="2100"
+        bind:value={pickerYear}
+      />
+      <button
+        class="month-picker__year-btn"
+        aria-label="Next year"
+        on:click={() => (pickerYear += 1)}
+      >
+        ›
+      </button>
+    </div>
+    <div class="month-picker__grid">
+      {#each monthNames as monthName, index}
+        <button
+          class:month-picker__month={true}
+          class:is-current={index === displayedMonth.month()}
+          on:click={() => selectMonth(index)}
+        >
+          {monthName}
+        </button>
+      {/each}
+    </div>
+  </div>
+{/if}
 </div>
 
 <style>
+  .photo-calendar {
+    position: relative;
+  }
+
   :global(.photo-calendar--photo-mode .day.has-note:not(.has-photo)) {
     background: var(--photo-calendar-note-bg);
     border-radius: 6px;
@@ -183,5 +330,67 @@
   :global(.day.has-photo) {
     border-radius: 6px;
     overflow: hidden;
+  }
+
+  .month-picker {
+    position: absolute;
+    z-index: 20;
+    background: var(--background-primary);
+    border: 1px solid var(--background-modifier-border);
+    border-radius: 8px;
+    box-shadow: 0 10px 30px rgba(0, 0, 0, 0.2);
+    padding: 10px;
+    width: 220px;
+  }
+
+  .month-picker__header {
+    align-items: center;
+    display: flex;
+    gap: 6px;
+    margin-bottom: 8px;
+  }
+
+  .month-picker__year-btn {
+    background: var(--background-secondary);
+    border: 1px solid var(--background-modifier-border);
+    border-radius: 6px;
+    color: var(--text-normal);
+    cursor: pointer;
+    height: 28px;
+    width: 28px;
+  }
+
+  .month-picker__year-input {
+    background: var(--background-secondary);
+    border: 1px solid var(--background-modifier-border);
+    border-radius: 6px;
+    color: var(--text-normal);
+    flex: 1;
+    height: 28px;
+    padding: 0 6px;
+    text-align: center;
+  }
+
+  .month-picker__grid {
+    display: grid;
+    grid-template-columns: repeat(3, 1fr);
+    gap: 6px;
+  }
+
+  .month-picker__month {
+    background: var(--background-secondary);
+    border: 1px solid var(--background-modifier-border);
+    border-radius: 6px;
+    color: var(--text-normal);
+    cursor: pointer;
+    font-size: 0.85em;
+    padding: 6px 0;
+    text-transform: capitalize;
+  }
+
+  .month-picker__month.is-current {
+    border-color: var(--interactive-accent);
+    color: var(--interactive-accent);
+    font-weight: 600;
   }
 </style>
