@@ -1,6 +1,6 @@
 import { App, PluginSettingTab, Setting } from "obsidian";
 import type PhotoCalendarPlugin from "./main";
-import { IWeekStartOption } from "./constants";
+import { DEFAULT_SETTINGS, IWeekStartOption } from "./constants";
 
 export class PhotoCalendarSettingTab extends PluginSettingTab {
   plugin: PhotoCalendarPlugin;
@@ -54,16 +54,37 @@ export class PhotoCalendarSettingTab extends PluginSettingTab {
       );
 
     new Setting(containerEl)
-      .setName("Photo size")
-      .setDesc("Size of photos displayed in calendar cells")
+      .setName("Photo mode note background")
+      .setDesc("Background color for dates with notes but no photos (photo mode)")
+      .addColorPicker((picker) =>
+        picker
+          .setValue(this.plugin.settings.noteBackgroundColor)
+          .onChange(async (value) => {
+            this.plugin.settings.noteBackgroundColor = value;
+            await this.plugin.saveSettings();
+          })
+      );
+    new Setting(containerEl)
+      .setName("Reset photo mode note background")
+      .setDesc("Restore the default color")
+      .addButton((button) =>
+        button.setButtonText("Reset").onClick(async () => {
+          this.plugin.settings.noteBackgroundColor = DEFAULT_SETTINGS.noteBackgroundColor;
+          await this.plugin.saveSettings();
+          this.display();
+        })
+      );
+
+    new Setting(containerEl)
+      .setName("Photo fill mode")
+      .setDesc("How photos fill calendar cells")
       .addDropdown((dropdown) =>
         dropdown
-          .addOption("small", "Small")
-          .addOption("medium", "Medium")
-          .addOption("large", "Large")
-          .setValue(this.plugin.settings.photoSize)
+          .addOption("cover", "Cover (crop)")
+          .addOption("contain", "Contain (fit)")
+          .setValue(this.plugin.settings.photoFillMode)
           .onChange(async (value) => {
-            this.plugin.settings.photoSize = value as "small" | "medium" | "large";
+            this.plugin.settings.photoFillMode = value as "cover" | "contain";
             await this.plugin.saveSettings();
           })
       );

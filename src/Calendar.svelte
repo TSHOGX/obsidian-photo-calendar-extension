@@ -19,6 +19,7 @@
   const moment = (window as any).moment;
   let today: Moment;
   let displayedMonth: Moment = moment().startOf("month");
+  let containerEl: HTMLDivElement | null = null;
 
   $: today = getToday();
   $: sources = getSources();
@@ -31,7 +32,7 @@
 
   function getSources() {
     if (plugin.settings.showPhotos) {
-      return [createPhotoSource(plugin), createWordCountSource(plugin)];
+      return [createPhotoSource(plugin)];
     } else {
       return [createWordCountSource(plugin)];
     }
@@ -94,12 +95,20 @@
   async function updatePhotoBackgrounds() {
     await new Promise(resolve => setTimeout(resolve, 100));
 
+    if (!containerEl) return;
+
+    containerEl.style.setProperty(
+      "--photo-calendar-note-bg",
+      plugin.settings.noteBackgroundColor
+    );
+
     if (!plugin.settings.showPhotos) {
-      const dayElements = document.querySelectorAll(".day");
+      const dayElements = containerEl.querySelectorAll(".day");
       dayElements.forEach((el: HTMLElement) => {
         el.style.backgroundImage = "";
         el.style.backgroundSize = "";
         el.style.backgroundPosition = "";
+        el.style.backgroundRepeat = "";
         el.style.color = "";
         el.style.textShadow = "";
       });
@@ -111,7 +120,7 @@
       const photo = await plugin.photoService.getPhotoForDate(file.path);
       if (photo) {
         const date = moment(file.basename, "YYYY-MM-DD");
-        const dayElements = document.querySelectorAll(".day");
+        const dayElements = containerEl.querySelectorAll(".day");
 
         dayElements.forEach((el: HTMLElement) => {
           const dayText = el.textContent?.trim();
@@ -121,8 +130,9 @@
 
             if (isCurrentMonth && isRightMonth) {
               el.style.backgroundImage = `url('${photo}')`;
-              el.style.backgroundSize = "cover";
+              el.style.backgroundSize = plugin.settings.photoFillMode;
               el.style.backgroundPosition = "center";
+              el.style.backgroundRepeat = "no-repeat";
               el.style.color = "white";
               el.style.textShadow = "0 1px 2px rgba(0, 0, 0, 0.75), 0 2px 8px rgba(0, 0, 0, 0.45)";
             }
@@ -133,6 +143,12 @@
   }
 </script>
 
+<div
+  class="photo-calendar"
+  class:photo-calendar--photo-mode={plugin.settings.showPhotos}
+  class:photo-calendar--weeknums={plugin.settings.showWeekNums}
+  bind:this={containerEl}
+>
 <CalendarBase
   {sources}
   {today}
@@ -147,8 +163,19 @@
   selectedId={null}
   showWeekNums={plugin.settings.showWeekNums}
 />
+</div>
 
 <style>
+  :global(.photo-calendar--photo-mode .day.has-note:not(.has-photo)) {
+    background: var(--photo-calendar-note-bg);
+    border-radius: 6px;
+    box-shadow: inset 0 0 0 1px var(--photo-calendar-note-border);
+  }
+
+  :global(.photo-calendar--photo-mode .day.has-note:not(.has-photo):hover) {
+    background: var(--photo-calendar-note-bg-hover);
+  }
+
   :global(.day.has-note) {
     font-weight: 600;
   }

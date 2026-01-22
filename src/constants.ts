@@ -9,9 +9,10 @@ export interface ISettings {
   showWeeklyNote: boolean;
   photoFieldNames: string[];
   showPhotos: boolean;
-  photoSize: "small" | "medium" | "large";
+  photoFillMode: "cover" | "contain";
   wordsPerDot: number;
   showWeekNums: boolean;
+  noteBackgroundColor: string;
 }
 
 export const DEFAULT_SETTINGS: ISettings = {
@@ -20,7 +21,8 @@ export const DEFAULT_SETTINGS: ISettings = {
   showWeeklyNote: false,
   photoFieldNames: ["image", "cover", "banner"],
   showPhotos: true,
-  photoSize: "medium",
+  photoFillMode: "cover",
   wordsPerDot: 250,
-  showWeekNums: false
+  showWeekNums: false,
+  noteBackgroundColor: "#E2DCED"
 };

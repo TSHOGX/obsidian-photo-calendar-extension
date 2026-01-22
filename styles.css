@@ -1,6 +1,27 @@
 .photo-calendar {
   --calendar-border: var(--background-modifier-border);
   --calendar-hover: var(--background-modifier-hover);
+  --photo-calendar-note-bg: #E2DCED;
+  --photo-calendar-note-bg-hover: color-mix(in srgb, var(--photo-calendar-note-bg) 85%, var(--background-primary) 15%);
+  --photo-calendar-note-border: var(--background-modifier-border);
+  --photo-calendar-weeknum-width: 2.4em;
+}
+
+.photo-calendar .calendar {
+  table-layout: fixed;
+  width: 100%;
+}
+
+.photo-calendar .calendar col {
+  width: calc(100% / 7);
+}
+
+.photo-calendar--weeknums .calendar col {
+  width: calc((100% - var(--photo-calendar-weeknum-width)) / 7);
+}
+
+.photo-calendar--weeknums .calendar col:first-child {
+  width: var(--photo-calendar-weeknum-width);
 }
 
 .modal-button-container {
