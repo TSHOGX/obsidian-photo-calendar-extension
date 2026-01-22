@@ -203,17 +203,35 @@
       plugin.settings.noteBackgroundColor
     );
 
+    const dayElements = Array.from(
+      containerEl.querySelectorAll(".day")
+    ) as HTMLElement[];
+
+    dayElements.forEach((el: HTMLElement) => {
+      el.style.backgroundImage = "";
+      el.style.backgroundSize = "";
+      el.style.backgroundPosition = "";
+      el.style.backgroundRepeat = "";
+      el.style.color = "";
+      el.style.textShadow = "";
+    });
+
     if (!plugin.settings.showPhotos) {
-      const dayElements = containerEl.querySelectorAll(".day");
-      dayElements.forEach((el: HTMLElement) => {
-        el.style.backgroundImage = "";
-        el.style.backgroundSize = "";
-        el.style.backgroundPosition = "";
-        el.style.backgroundRepeat = "";
-        el.style.color = "";
-        el.style.textShadow = "";
-      });
       return;
+    }
+
+    const locale = moment().locale();
+    const startOfMonth = displayedMonth.clone().locale(locale).date(1);
+    const startOffset = startOfMonth.weekday();
+    const startDate = startOfMonth.clone().subtract(startOffset, "days");
+    const dateToElement = new Map<string, HTMLElement>();
+
+    for (let index = 0; index < 42; index += 1) {
+      const date = startDate.clone().add(index, "days");
+      const el = dayElements[index];
+      if (el) {
+        dateToElement.set(date.format("YYYY-MM-DD"), el);
+      }
     }
 
     const dailyNotes = getAllDailyNotes();
@@ -221,24 +239,18 @@
       const photo = await plugin.photoService.getPhotoForDate(file.path);
       if (photo) {
         const date = moment(file.basename, "YYYY-MM-DD");
-        const dayElements = containerEl.querySelectorAll(".day");
+        const el = dateToElement.get(date.format("YYYY-MM-DD"));
 
-        dayElements.forEach((el: HTMLElement) => {
-          const dayText = el.textContent?.trim();
-          if (dayText === date.format("D")) {
-            const isCurrentMonth = !el.classList.contains("adjacent-month");
-            const isRightMonth = date.month() === displayedMonth.month();
-
-            if (isCurrentMonth && isRightMonth) {
-              el.style.backgroundImage = `url('${photo}')`;
-              el.style.backgroundSize = plugin.settings.photoFillMode;
-              el.style.backgroundPosition = "center";
-              el.style.backgroundRepeat = "no-repeat";
-              el.style.color = "white";
-              el.style.textShadow = "0 1px 2px rgba(0, 0, 0, 0.75), 0 2px 8px rgba(0, 0, 0, 0.45)";
-            }
+        if (el) {
+          el.style.backgroundImage = `url('${photo}')`;
+          el.style.backgroundSize = plugin.settings.photoFillMode;
+          el.style.backgroundPosition = "center";
+          el.style.backgroundRepeat = "no-repeat";
+          if (!el.classList.contains("adjacent-month")) {
+            el.style.color = "white";
+            el.style.textShadow = "0 1px 2px rgba(0, 0, 0, 0.75), 0 2px 8px rgba(0, 0, 0, 0.45)";
           }
-        });
+        }
       }
     });
   }
