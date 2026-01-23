@@ -2,7 +2,8 @@
   import { onMount, onDestroy, tick } from "svelte";
   import type PhotoCalendarPlugin from "./main";
   import type { ISettings } from "./constants";
-  import type { Moment } from "moment";
+  import { moment } from "obsidian";
+  import type { Moment, MomentStatic } from "./types";
   import {
     Calendar as CalendarBase,
     configureGlobalMomentLocale,
@@ -13,14 +14,14 @@
 
   export let plugin: PhotoCalendarPlugin;
   export let settings: ISettings;
-  export let onDateClick: (date: Moment, isNewNote: boolean) => void;
+  export let onDateClick: (date: Moment, isNewNote: boolean) => Promise<void>;
   export let onDateHover: (date: Moment, targetEl: HTMLElement) => void;
   export let onWeekClick: (date: Moment, isMetaPressed: boolean) => Promise<boolean>;
   export let refreshTrigger: number = 0;
 
-  const moment = (window as any).moment;
+  const momentApi = moment as unknown as MomentStatic;
   let today: Moment;
-  let displayedMonth: Moment = moment().startOf("month");
+  let displayedMonth: Moment = momentApi().startOf("month");
   let containerEl: HTMLDivElement | null = null;
   let showMonthPicker = false;
   let pickerYear = displayedMonth.year();
@@ -29,17 +30,17 @@
   let monthPickerEl: HTMLDivElement | null = null;
   let isPickerListenersAttached = false;
   let containerClickHandler: ((event: MouseEvent) => void) | null = null;
-  let monthNames: string[] = moment.monthsShort();
+  let monthNames: string[] = momentApi.monthsShort();
   let photoUpdateToken = 0;
 
   $: today = getToday();
   $: sources = getSources();
-  $: monthNames = today?.localeData?.()?.monthsShort?.() ?? moment.monthsShort();
+  $: monthNames = today?.localeData?.()?.monthsShort?.() ?? momentApi.monthsShort();
 
   function getToday() {
     const { weekStart } = settings;
     configureGlobalMomentLocale("", weekStart);
-    return moment();
+    return momentApi();
   }
 
   function getSources() {
@@ -50,9 +51,9 @@
     }
   }
 
-  function handleClickDay(date: Moment, isMetaPressed: boolean) {
+  function handleClickDay(date: Moment) {
     const dailyNote = getDailyNote(date, getAllDailyNotes());
-    onDateClick(date, !dailyNote);
+    void onDateClick(date, !dailyNote);
     return true;
   }
 
@@ -66,9 +67,9 @@
   }
 
   // Heartbeat to keep today updated
-  let lastDay = moment().date();
+  let lastDay = momentApi().date();
   let heartbeat = setInterval(() => {
-    const now = moment();
+    const now = momentApi();
     const currentDay = now.date();
 
     // Only update if the day has changed
@@ -93,7 +94,7 @@
   });
 
   onMount(() => {
-    updatePhotoBackgrounds();
+    void updatePhotoBackgrounds();
     containerClickHandler = (event: MouseEvent) => {
       const target = event.target as HTMLElement | null;
       if (!target || !containerEl) return;
@@ -102,24 +103,24 @@
       event.preventDefault();
       event.stopPropagation();
       // Prevent the calendar's default reset handler.
-      (event as any).stopImmediatePropagation?.();
-      openMonthPicker(titleEl);
+      event.stopImmediatePropagation();
+      void openMonthPicker(titleEl);
     };
     containerEl?.addEventListener("click", containerClickHandler, true);
     window.addEventListener("resize", updatePickerPosition);
   });
 
   $: if (displayedMonth) {
-    updatePhotoBackgrounds();
+    void updatePhotoBackgrounds();
   }
 
   $: if (settings?.showPhotos !== undefined) {
-    updatePhotoBackgrounds();
+    void updatePhotoBackgrounds();
   }
 
   $: if (refreshTrigger) {
     sources = getSources();
-    updatePhotoBackgrounds();
+    void updatePhotoBackgrounds();
   }
 
   $: if (showMonthPicker) {
@@ -240,7 +241,7 @@
       return;
     }
 
-    const locale = moment().locale();
+    const locale = momentApi().locale();
     const startOfMonth = displayedMonth.clone().locale(locale).date(1);
     const startOffset = startOfMonth.weekday();
     const startDate = startOfMonth.clone().subtract(startOffset, "days");
@@ -257,7 +258,7 @@
     const dailyNotes = getAllDailyNotes();
     const photoResults = await Promise.all(
       Object.values(dailyNotes).map(async (file) => {
-        const date = moment(file.basename, "YYYY-MM-DD");
+        const date = momentApi(file.basename, "YYYY-MM-DD");
         if (!date.isValid()) return null;
         const el = dateToElement.get(date.format("YYYY-MM-DD"));
         if (!el) return null;

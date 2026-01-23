@@ -1,21 +1,17 @@
-import { ItemView, WorkspaceLeaf, TFile, Notice, Modal } from "obsidian";
+import { ItemView, WorkspaceLeaf, Notice, Modal } from "obsidian";
+import type { EventRef } from "obsidian";
+import type { Moment } from "./types";
 import { VIEW_TYPE_CALENDAR } from "./constants";
 import type PhotoCalendarPlugin from "./main";
 import Calendar from "./Calendar.svelte";
-import {
-  appHasDailyNotesPluginLoaded,
-  createDailyNote,
-  getAllDailyNotes,
-  getDailyNote,
-} from "obsidian-daily-notes-interface";
+import { createDailyNote, getAllDailyNotes, getDailyNote } from "obsidian-daily-notes-interface";
 import { getWeeklyNote, getAllWeeklyNotes, createWeeklyNote } from "./weeklyNotes";
-import type { Moment } from "moment";
 
 export class CalendarView extends ItemView {
   private calendarComponent!: Calendar;
   private plugin: PhotoCalendarPlugin;
   private refreshTrigger: number = 0;
-  private fileEventRefs: any[] = [];
+  private fileEventRefs: EventRef[] = [];
   private refreshTimeout: number | null = null;
 
   constructor(leaf: WorkspaceLeaf, plugin: PhotoCalendarPlugin) {
@@ -28,28 +24,36 @@ export class CalendarView extends ItemView {
   }
 
   getDisplayText(): string {
-    return "Photo Calendar";
+    return "Photo calendar";
   }
 
   getIcon(): string {
     return "calendar-with-checkmark";
   }
 
-  async onOpen(): Promise<void> {
+  onOpen(): Promise<void> {
+    const onDateClick = (date: Moment, isNewNote: boolean) =>
+      this.onDateClick(date, isNewNote);
+    const onDateHover = (date: Moment, targetEl: HTMLElement) =>
+      this.onDateHover(date, targetEl);
+    const onWeekClick = (date: Moment, isMetaPressed: boolean) =>
+      this.onWeekClick(date, isMetaPressed);
+
     this.calendarComponent = new Calendar({
       target: this.contentEl,
       props: {
         plugin: this.plugin,
         settings: { ...this.plugin.settings },
-        onDateClick: this.onDateClick.bind(this),
-        onDateHover: this.onDateHover.bind(this),
-        onWeekClick: this.onWeekClick.bind(this),
+        onDateClick,
+        onDateHover,
+        onWeekClick,
         refreshTrigger: this.refreshTrigger,
       },
     });
 
     // Register file event listeners
     this.registerFileEvents();
+    return Promise.resolve();
   }
 
   private registerFileEvents(): void {
@@ -87,7 +91,7 @@ export class CalendarView extends ItemView {
     this.refresh();
   }
 
-  async onClose(): Promise<void> {
+  onClose(): Promise<void> {
     // Clear debounce timeout
     if (this.refreshTimeout) {
       clearTimeout(this.refreshTimeout);
@@ -95,12 +99,13 @@ export class CalendarView extends ItemView {
     }
 
     // Unregister file event listeners
-    this.fileEventRefs.forEach(ref => this.app.vault.offref(ref));
+    this.fileEventRefs.forEach((ref) => this.app.vault.offref(ref));
     this.fileEventRefs = [];
 
     if (this.calendarComponent) {
       this.calendarComponent.$destroy();
     }
+    return Promise.resolve();
   }
 
   private async onDateClick(date: Moment, isNewNote: boolean): Promise<void> {
@@ -144,7 +149,7 @@ export class CalendarView extends ItemView {
     const { workspace } = this.app;
     const startOfWeek = date.clone().startOf("week");
     const weeklyNotes = getAllWeeklyNotes(this.app);
-    const weeklyNote = getWeeklyNote(startOfWeek, weeklyNotes);
+    const weeklyNote = getWeeklyNote(startOfWeek, weeklyNotes, this.app);
 
     if (weeklyNote) {
       const leaf = workspace.getLeaf(isMetaPressed);

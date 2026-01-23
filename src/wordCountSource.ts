@@ -1,5 +1,5 @@
-import type { Moment } from "moment";
 import type { TFile } from "obsidian";
+import type { Moment } from "./types";
 import type { ICalendarSource, IDayMetadata } from "obsidian-calendar-ui";
 import { getDailyNote, getAllDailyNotes } from "obsidian-daily-notes-interface";
 import { getWeeklyNote, getAllWeeklyNotes } from "./weeklyNotes";
@@ -60,7 +60,7 @@ export function createWordCountSource(plugin: PhotoCalendarPlugin): ICalendarSou
 
     getWeeklyMetadata: async (date: Moment): Promise<IDayMetadata> => {
       const weeklyNotes = getAllWeeklyNotes(plugin.app);
-      const weeklyNote = getWeeklyNote(date, weeklyNotes);
+      const weeklyNote = getWeeklyNote(date, weeklyNotes, plugin.app);
 
       const classes: string[] = [];
       if (weeklyNote) {

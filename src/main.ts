@@ -15,15 +15,15 @@ export default class PhotoCalendarPlugin extends Plugin {
 
     this.registerView(VIEW_TYPE_CALENDAR, (leaf) => new CalendarView(leaf, this));
 
-    this.addRibbonIcon(RIBBON_ICON, "Open Photo Calendar", () => {
-      this.activateView();
+    this.addRibbonIcon(RIBBON_ICON, "Open calendar", () => {
+      void this.activateView();
     });
 
     this.addCommand({
-      id: "open-photo-calendar",
-      name: "Open Photo Calendar",
+      id: "open-calendar",
+      name: "Open calendar",
       callback: () => {
-        this.activateView();
+        void this.activateView();
       }
     });
 
@@ -55,11 +55,14 @@ export default class PhotoCalendarPlugin extends Plugin {
       }
     }
 
-    workspace.revealLeaf(leaf);
+    if (leaf) {
+      void workspace.revealLeaf(leaf);
+    }
   }
 
   async loadSettings() {
-    this.settings = Object.assign({}, DEFAULT_SETTINGS, await this.loadData());
+    const data = (await this.loadData()) as Partial<ISettings> | null;
+    this.settings = { ...DEFAULT_SETTINGS, ...(data ?? {}) };
   }
 
   async saveSettings() {

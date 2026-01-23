@@ -1,5 +1,5 @@
-import { App, TFile, TFolder, normalizePath } from "obsidian";
-import type { Moment } from "moment";
+import { App, TFile, normalizePath, moment } from "obsidian";
+import type { Moment, MomentStatic } from "./types";
 
 export interface IWeeklyNoteSettings {
   folder?: string;
@@ -7,14 +7,28 @@ export interface IWeeklyNoteSettings {
   template?: string;
 }
 
+const momentApi = moment as unknown as MomentStatic;
+
+type PeriodicNotesPlugin = {
+  settings?: {
+    weekly?: IWeeklyNoteSettings;
+  };
+};
+
+type PluginRegistry = {
+  plugins?: Record<string, PeriodicNotesPlugin>;
+};
+
 export function getWeeklyNoteSettings(app: App): IWeeklyNoteSettings {
   try {
     // Try to get settings from Periodic Notes plugin
-    const periodicNotes = (app as any).plugins?.plugins?.["periodic-notes"];
+    const periodicNotes = (app as App & { plugins?: PluginRegistry }).plugins?.plugins?.[
+      "periodic-notes"
+    ];
     if (periodicNotes?.settings?.weekly) {
       return periodicNotes.settings.weekly;
     }
-  } catch (e) {
+  } catch {
     // Ignore errors
   }
 
@@ -25,8 +39,12 @@ export function getWeeklyNoteSettings(app: App): IWeeklyNoteSettings {
   };
 }
 
-export function getWeeklyNote(date: Moment, weeklyNotes: Record<string, TFile>): TFile | null {
-  const settings = getWeeklyNoteSettings((window as any).app);
+export function getWeeklyNote(
+  date: Moment,
+  weeklyNotes: Record<string, TFile>,
+  app: App
+): TFile | null {
+  const settings = getWeeklyNoteSettings(app);
   const format = settings.format || "GGGG-[W]ww";
   const filename = date.format(format);
   return weeklyNotes[filename] || null;
@@ -46,8 +64,7 @@ export function getAllWeeklyNotes(app: App): Record<string, TFile> {
     }
 
     const basename = file.basename;
-    const moment = (window as any).moment;
-    const date = moment(basename, format, true);
+    const date = momentApi(basename, format, true);
 
     if (date.isValid()) {
       weeklyNotes[basename] = file;

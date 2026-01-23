@@ -1,4 +1,4 @@
-import { App, TFile, CachedMetadata } from "obsidian";
+import { App, TFile } from "obsidian";
 import type { ISettings } from "./constants";
 
 export class PhotoService {
@@ -34,21 +34,25 @@ export class PhotoService {
       return null;
     }
 
-    const photo = await this.extractPhotoFromFile(file);
+    const photo = this.extractPhotoFromFile(file);
     this.cache.set(date, photo);
     return photo;
   }
 
-  private async extractPhotoFromFile(file: TFile): Promise<string | null> {
+  private extractPhotoFromFile(file: TFile): string | null {
     const metadata = this.app.metadataCache.getFileCache(file);
     if (!metadata?.frontmatter) {
       return null;
     }
 
     for (const fieldName of this.settings.photoFieldNames) {
-      const value = metadata.frontmatter[fieldName];
-      if (value) {
+      const frontmatter = metadata.frontmatter as Record<string, unknown>;
+      const value = frontmatter[fieldName];
+      if (typeof value === "string" && value.trim().length > 0) {
         return this.resolveImagePath(value, file);
+      }
+      if (Array.isArray(value) && typeof value[0] === "string") {
+        return this.resolveImagePath(value[0], file);
       }
     }
 
