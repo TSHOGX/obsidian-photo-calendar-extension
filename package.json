@@ -1,6 +1,6 @@
 {
   "name": "obsidian-photo-calendar",
-  "version": "1.0.3",
+  "version": "1.0.4",
   "description": "Calendar plugin with daily photo display for Obsidian",
   "main": "main.js",
   "scripts": {
