@@ -23,20 +23,22 @@ export class PhotoService {
     this.cache.delete(path);
   }
 
-  async getPhotoForDate(date: string): Promise<string | null> {
+  getPhotoForDate(date: string): Promise<string | null> {
     if (this.cache.has(date)) {
-      return this.cache.get(date) || null;
+      return Promise.resolve(this.cache.get(date) || null);
     }
 
     const file = this.app.vault.getAbstractFileByPath(date);
     if (!(file instanceof TFile)) {
       this.cache.set(date, null);
-      return null;
+      return Promise.resolve(null);
     }
 
-    const photo = this.extractPhotoFromFile(file);
-    this.cache.set(date, photo);
-    return photo;
+    return Promise.resolve().then(() => {
+      const photo = this.extractPhotoFromFile(file);
+      this.cache.set(date, photo);
+      return photo;
+    });
   }
 
   private extractPhotoFromFile(file: TFile): string | null {
